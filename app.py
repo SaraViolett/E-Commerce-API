@@ -5,11 +5,12 @@ from marshmallow import ValidationError
 from sqlalchemy import ForeignKey, Table, Column, String, DateTime, select, Float
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 from typing import List
-import datetime
+from datetime import datetime
 # Initialize Flask app
 app = Flask(__name__)
 # MySQL database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:leaRning1!@localhost/ecommerce_api'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Base Model
 class Base(DeclarativeBase):
@@ -41,8 +42,8 @@ class User(Base):
 class Order(Base):
     __tablename__ = "orders"
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_date: Mapped[DateTime] = mapped_column(DateTime, default=datetime.datetime.now)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    order_date: Mapped[DateTime] = mapped_column(DateTime, default=datetime.now)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     #one-to-one relationship with user
     users:Mapped["User"] = relationship(back_populates="orders")
     #One-to-Many relationship from this order to a list of product objects
@@ -187,10 +188,10 @@ def delete_product(id):
 @app.route('/orders', methods=['POST']) 
 def create_order():
     try:
-        order_data = order_schema.jsonify(request.json) #Retrieves the JSON data from the incoming request
+        order_data = order_schema.load(request.json) #Retrieves the JSON data from the incoming request
     except ValidationError as e: #catches validation error and returns error message
         return jsonify(e.messages), 400
-    new_order = Order(user_id=order_data['user.id']) #Creates a new order object with the validated data.
+    new_order = Order(user_id=order_data['user_id']) #Creates a new order object with the validated data.
     db.session.add(new_order) #adds new order to database
     db.session.commit() #saves new order
     return order_schema.jsonify(new_order), 201 #Returns the newly created oreder in JSON format with a 201 status.       
