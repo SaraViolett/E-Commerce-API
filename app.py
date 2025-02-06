@@ -37,7 +37,7 @@ class User(Base):
     address: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     #one to many relationship for user to orders:
-    user_orders: Mapped[List["Order"]] = relationship(back_populates="ordered_by_user")
+    user_orders: Mapped[List["Order"]] = relationship(back_populates="user")
     
 class Order(Base):
     __tablename__ = "orders"
@@ -45,9 +45,9 @@ class Order(Base):
     order_date: Mapped[DateTime] = mapped_column(DateTime, default=datetime.now)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     #one-to-one relationship with user
-    ordered_by_user: Mapped["User"] = relationship(back_populates="user_orders")
+    user: Mapped["User"] = relationship(back_populates="user_orders")
     #One-to-Many relationship from this order to a list of product objects
-    product_list: Mapped[List["Product"]] = relationship("Product", secondary=order_product, back_populates="order_list")
+    products: Mapped[List["Product"]] = relationship("Product", secondary=order_product, back_populates="orders")
     
 class Product(Base):
     __tablename__ = "products"
@@ -55,7 +55,7 @@ class Product(Base):
     product_name: Mapped[str] = mapped_column(String(50), nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     # One-to-Many relationship, one product can be related to a list of orders
-    order_list: Mapped[List["Order"]] = relationship("Order", secondary=order_product, back_populates="product_list")    
+    orders: Mapped[List["Order"]] = relationship("Order", secondary=order_product, back_populates="products")    
 
 #================================== SCHEMAS =============================================================
 # User Schema
@@ -201,7 +201,7 @@ def create_order():
 def add_product_2_order(order_id, product_id):
     order = db.session.get(Order, order_id) #retrieves order from database
     product = db.session.get(Product, product_id) #retrieves product from database
-    order.product_list.append(product) #adds the product to the list of products for that order
+    order.products.append(product) #adds the product to the list of products for that order
     db.session.commit() #saves the change
     return jsonify({"message": f"{product.product_name} at ${product.price} was added the order (Order id: {order.id}, User_id: {order.user_id})"})
 
@@ -212,7 +212,7 @@ def remove_product_from_order(order_id, product_id):
     product = db.session.get(Product, product_id) #retrieves product from database
     if not order or not product:
         return jsonify({"message": "Invalid order or product ID"}), 400
-    order.product_list.remove(product) #removes the product from the list of products for that order
+    order.products.remove(product) #removes the product from the list of products for that order
     db.session.commit() #saves the change
     return jsonify({"message": f"{product.product_name} at ${product.price} was removed from the order (Order id: {order.id}, User_id: {order.user_id})"})
 
@@ -227,7 +227,7 @@ def get_orders_from_user(id):
 @app.route('/orders/<order_id>/products', methods=['GET'])
 def get_products_from_order(id):
     order = db.session.get(Order, id)
-    for product in order.product_list:
+    for product in order.products:
         return jsonify({"message": f"{order.id} order has contains the following products: {product.product_name}"})
 #=====================================================================================================================================================
 
