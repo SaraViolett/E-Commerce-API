@@ -66,6 +66,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
 class OrderSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Order
+        include_fk = True 
 # User Schema
 class ProductSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -203,10 +204,10 @@ def add_product_2_order(order_id, product_id):
     product = db.session.get(Product, product_id) #retrieves product from database
     order.products.append(product) #adds the product to the list of products for that order
     db.session.commit() #saves the change
-    return jsonify({"message": f"{product.product_name} at ${product.price} was added the order (Order id: {order.id}, User_id: {order.user_id})"})
+    return jsonify({"message": f"{product.product_name} (${product.price}) was added the order (Order id: {order.id}, User_id: {order.user_id})"})
 
 #DELETE /orders/<order_id>/remove_product: Remove a product from an order
-@app.route('/orders/<order_id>/remove_product', methods=['DELETE']) #associates a product with an order
+@app.route('/orders/<order_id>/remove_product/<product_id>', methods=['DELETE']) #associates a product with an order
 def remove_product_from_order(order_id, product_id):
     order = db.session.get(Order, order_id) #retrieves order from database
     product = db.session.get(Product, product_id) #retrieves product from database
@@ -214,21 +215,25 @@ def remove_product_from_order(order_id, product_id):
         return jsonify({"message": "Invalid order or product ID"}), 400
     order.products.remove(product) #removes the product from the list of products for that order
     db.session.commit() #saves the change
-    return jsonify({"message": f"{product.product_name} at ${product.price} was removed from the order (Order id: {order.id}, User_id: {order.user_id})"})
+    return jsonify({"message": f"{product.product_name}(${product.price}) was removed from the order (Order id: {order.id}, User_id: {order.user_id})"})
 
 #GET /orders/user/<user_id>: Get all orders for a user
 @app.route('/orders/user/<user_id>', methods=['GET'])
-def get_orders_from_user(id):
-    user = db.session.get(User, id)
+def get_orders_from_user(user_id):
+    user = db.session.get(User, user_id)
+    user_orders = []
     for order in user.user_orders:
-        return jsonify({"message": f"{user.name} has made the following orders(id): {order.id}"})
+        user_orders.append(order.id)
+    return jsonify({"message": f"{user.name} has made the following orders(id): {user_orders}"})
     
 #GET /orders/<order_id>/products: Get all products for an order
 @app.route('/orders/<order_id>/products', methods=['GET'])
-def get_products_from_order(id):
-    order = db.session.get(Order, id)
+def get_products_from_order(order_id):
+    order = db.session.get(Order, order_id)
+    order_products = []
     for product in order.products:
-        return jsonify({"message": f"{order.id} order has contains the following products: {product.product_name}"})
+        order_products.append(product.product_name)
+    return jsonify({"message": f" Order {order.id} contains the following products: {order_products}"})
 #=====================================================================================================================================================
 
 if __name__ == "__main__":
